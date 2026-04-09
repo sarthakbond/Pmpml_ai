@@ -1,92 +1,287 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>PMPML AI-Connect</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #map { height: 100vh; width: 100%; }
-        .dashboard { 
-            position: absolute; 
-            bottom: 20px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            z-index: 1000; 
-            background: rgba(255, 255, 255, 0.9); 
-            padding: 20px; 
-            border-radius: 15px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            width: 80%;
-            max-width: 400px;
-            text-align: center;
-        }
-        .bus-status { color: #2ecc71; font-weight: bold; font-size: 1.2em; }
-        .verify-btn {
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            margin-top: 10px;
-            cursor: pointer;
-            width: 100%;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PMPML AI-Connect</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;background:#0d1b2a}
+#map{position:absolute;inset:0;z-index:1}
+.leaflet-routing-container{display:none!important}
+.topbar{
+  position:absolute;top:0;left:0;right:0;z-index:900;
+  background:linear-gradient(to bottom,rgba(13,27,42,0.93) 0%,transparent 100%);
+  padding:16px 20px 40px;
+  display:flex;align-items:center;gap:10px;
+}
+.topbar-pulse{
+  width:9px;height:9px;border-radius:50%;
+  background:#22c55e;
+  box-shadow:0 0 0 3px rgba(34,197,94,0.22);
+  flex-shrink:0;
+  animation:pulseGreen 2s infinite;
+}
+@keyframes pulseGreen{
+  0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,0.22)}
+  50%{box-shadow:0 0 0 6px rgba(34,197,94,0.08)}
+}
+.topbar-title{font-size:14px;font-weight:700;color:#f1f5f9;letter-spacing:0.4px}
+.topbar-live{
+  margin-left:auto;font-size:11px;font-weight:600;
+  color:#22c55e;background:rgba(34,197,94,0.12);
+  border:1px solid rgba(34,197,94,0.25);
+  padding:3px 10px;border-radius:20px;letter-spacing:0.8px;
+}
+.sheet{
+  position:absolute;bottom:0;left:0;right:0;z-index:900;
+  background:#111c28;
+  border-radius:22px 22px 0 0;
+  border-top:1px solid rgba(255,255,255,0.06);
+  padding:0 18px 28px;
+}
+.sheet-drag{
+  width:34px;height:4px;
+  background:rgba(255,255,255,0.12);
+  border-radius:2px;
+  margin:10px auto 18px;
+}
+.route-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(59,130,246,0.12);
+  border:1px solid rgba(59,130,246,0.28);
+  border-radius:20px;padding:3px 12px;margin-bottom:10px;
+}
+.route-chip-dot{width:6px;height:6px;border-radius:50%;background:#60a5fa}
+.route-chip-label{font-size:11px;font-weight:700;color:#93c5fd;letter-spacing:0.7px}
+.route-heading{font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:3px}
+.route-sub{font-size:12px;color:#475569;margin-bottom:16px;line-height:1.5}
+.info-row{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:14px;padding:13px 14px;margin-bottom:12px;
+}
+.info-icon{
+  width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.info-icon.green{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.18)}
+.info-icon.blue{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.18)}
+.info-icon svg{width:16px;height:16px}
+.info-lbl{font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;margin-bottom:2px}
+.info-val{font-size:14px;font-weight:700;color:#e2e8f0;transition:color 0.4s}
+.info-val.amber{color:#f59e0b}
+.info-val.green{color:#22c55e}
+.sep{width:1px;height:30px;background:rgba(255,255,255,0.06);margin:0 4px}
+.prog-wrap{
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:14px;padding:13px 14px;margin-bottom:14px;
+}
+.prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.prog-top span{font-size:11px;color:#475569;font-weight:500}
+.prog-top strong{font-size:11px;color:#94a3b8;font-weight:600}
+.prog-track{height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#22c55e);border-radius:3px;transition:width 0.25s ease}
+.vbtn{
+  width:100%;height:50px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,#1d4ed8,#1e40af);
+  color:#fff;font-size:14px;font-weight:700;letter-spacing:0.3px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform 0.15s,opacity 0.2s;
+  position:relative;overflow:hidden;
+}
+.vbtn:hover{opacity:0.92}
+.vbtn:active{transform:scale(0.98)}
+.vbtn.done{background:linear-gradient(135deg,#059669,#047857);cursor:default}
+.vbtn svg{width:15px;height:15px;flex-shrink:0}
+.ripple{
+  position:absolute;inset:0;border-radius:14px;
+  background:rgba(255,255,255,0.08);
+  transform:scale(0);opacity:0;
+}
+.vbtn.done .ripple{animation:ripOut 0.55s ease-out forwards}
+@keyframes ripOut{0%{transform:scale(0);opacity:0.5}100%{transform:scale(1.3);opacity:0}}
+</style>
 </head>
 <body>
 
-    <div class="dashboard">
-        <div id="bus-info">Searching for nearby buses...</div>
-        <div id="status" class="bus-status"></div>
-        <button class="verify-btn" onclick="verifyBus()">I am on this Bus (Verify)</button>
+<div class="topbar">
+  <div class="topbar-pulse"></div>
+  <div class="topbar-title">PMPML AI-Connect</div>
+  <div class="topbar-live">LIVE</div>
+</div>
+
+<div id="map"></div>
+
+<div class="sheet">
+  <div class="sheet-drag"></div>
+  <div class="route-chip">
+    <div class="route-chip-dot"></div>
+    <span class="route-chip-label">ROUTE 149</span>
+  </div>
+  <div class="route-heading">Hadapsar Gadital</div>
+  <div class="route-sub">Handewadi Chowk &rarr; Keystone School of Engineering</div>
+
+  <div class="info-row">
+    <div class="info-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
     </div>
+    <div style="flex:1">
+      <div class="info-lbl">Bus Status</div>
+      <div class="info-val" id="etaVal">Calculating route…</div>
+    </div>
+    <div class="sep"></div>
+    <div class="info-icon blue" style="margin-left:4px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+    </div>
+    <div>
+      <div class="info-lbl">Stops left</div>
+      <div class="info-val" id="stopsVal">—</div>
+    </div>
+  </div>
 
-    <div id="map"></div>
+  <div class="prog-wrap">
+    <div class="prog-top">
+      <span>Journey progress</span>
+      <strong id="pctVal">0%</strong>
+    </div>
+    <div class="prog-track">
+      <div class="prog-fill" id="progFill"></div>
+    </div>
+  </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        var map = L.map('map').setView([18.4526, 73.9455], 16);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  <button class="vbtn" id="vbtn" onclick="handleVerify()">
+    <div class="ripple"></div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>
+    </svg>
+    Verify My Presence
+  </button>
+</div>
 
-        var collegeMarker = L.marker([18.4526, 73.9455]).addTo(map).bindPopup('Keystone College');
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+<script>
+var S = [18.4595, 73.9355];
+var E = [18.4526, 73.9455];
+var allCoords = [];
+var idx = 0;
+var timer = null;
+var verDone = false;
 
-        var busRoute = [
-            [18.4580, 73.9380],
-            [18.4570, 73.9400],
-            [18.4560, 73.9420],
-            [18.4550, 73.9440],
-            [18.4535, 73.9450],
-            [18.4526, 73.9455]
-        ];
+var map = L.map('map', { zoomControl: false }).setView([18.456, 73.941], 15);
 
-        var busIcon = L.icon({
-            iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-            iconSize: [40, 40]
-        });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
+}).addTo(map);
 
-        var busMarker = L.marker(busRoute[0], {icon: busIcon}).addTo(map);
-        var step = 0;
+L.control.zoom({ position: 'topright' }).addTo(map);
 
-        function moveBus() {
-            if (step < busRoute.length) {
-                busMarker.setLatLng(busRoute[step]);
-                document.getElementById('bus-info').innerHTML = "Bus 149: Heading to Keystone";
-                document.getElementById('status').innerHTML = "ETA: " + (busRoute.length - step) + " mins";
-                step++;
-            } else {
-                document.getElementById('status').innerHTML = "Arrived at College";
-                step = 0; 
-            }
-        }
+function makeBusCanvas() {
+  var c = document.createElement('canvas');
+  c.width = 56; c.height = 56;
+  var x = c.getContext('2d');
+  x.beginPath();
+  x.arc(28, 28, 26, 0, Math.PI * 2);
+  x.fillStyle = '#1e40af';
+  x.fill();
+  x.strokeStyle = '#93c5fd';
+  x.lineWidth = 2.5;
+  x.stroke();
+  x.font = '22px serif';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText('🚌', 28, 30);
+  return c.toDataURL();
+}
 
-        setInterval(moveBus, 3000);
+var busIcon = L.icon({
+  iconUrl: makeBusCanvas(),
+  iconSize: [40, 40],
+  iconAnchor: [20, 20]
+});
 
-        function verifyBus() {
-            busMarker.bindPopup("<b>Verified by User</b>").openPopup();
-            document.getElementById('status').innerHTML = "STATUS: VERIFIED LIVE";
-            document.getElementById('status').style.color = "#e67e22";
-        }
-    </script>
+L.circleMarker(S, {
+  radius: 8, fillColor: '#22c55e', fillOpacity: 1,
+  color: '#fff', weight: 2.5
+}).addTo(map).bindTooltip('Handewadi Chowk', { direction: 'top', permanent: false });
+
+L.circleMarker(E, {
+  radius: 8, fillColor: '#ef4444', fillOpacity: 1,
+  color: '#fff', weight: 2.5
+}).addTo(map).bindTooltip('Keystone School of Engineering', { direction: 'top', permanent: false });
+
+var bus = L.marker(S, { icon: busIcon, zIndexOffset: 1000 }).addTo(map);
+
+var ctrl = L.Routing.control({
+  waypoints: [L.latLng(S[0], S[1]), L.latLng(E[0], E[1])],
+  router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' }),
+  routeWhileDragging: false,
+  addWaypoints: false,
+  createMarker: function() { return null; },
+  lineOptions: {
+    styles: [{ color: '#3b82f6', weight: 5, opacity: 0.9 }]
+  }
+}).addTo(map);
+
+ctrl.on('routesfound', function(e) {
+  allCoords = e.routes[0].coordinates;
+  idx = 0;
+  var total = allCoords.length;
+  var mins = Math.max(1, Math.ceil(total / 60));
+  document.getElementById('etaVal').textContent = 'En route — ~' + mins + ' min away';
+  document.getElementById('stopsVal').textContent = '3';
+  tick();
+});
+
+ctrl.on('routingerror', function() {
+  document.getElementById('etaVal').textContent = 'Route unavailable offline';
+});
+
+function tick() {
+  var total = allCoords.length;
+  if (idx >= total) {
+    document.getElementById('etaVal').textContent = 'Arrived at destination';
+    document.getElementById('etaVal').className = 'info-val green';
+    document.getElementById('pctVal').textContent = '100%';
+    document.getElementById('progFill').style.width = '100%';
+    document.getElementById('stopsVal').textContent = '0';
+    return;
+  }
+  var pt = allCoords[idx];
+  bus.setLatLng([pt.lat, pt.lng]);
+  var pct = Math.round((idx / (total - 1)) * 100);
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('pctVal').textContent = pct + '%';
+  var rem = Math.max(1, Math.ceil((total - idx) / 60));
+  if (!verDone) {
+    document.getElementById('etaVal').textContent = 'En route — ~' + rem + ' min away';
+  }
+  var s = idx < total * 0.33 ? '3' : idx < total * 0.66 ? '2' : idx < total * 0.9 ? '1' : '0';
+  document.getElementById('stopsVal').textContent = s;
+  idx++;
+  timer = setTimeout(tick, 75);
+}
+
+function handleVerify() {
+  if (verDone) return;
+  verDone = true;
+  var b = document.getElementById('vbtn');
+  b.classList.add('done');
+  b.innerHTML = '<div class="ripple"></div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Presence Confirmed';
+  var ev = document.getElementById('etaVal');
+  ev.textContent = 'AI STATUS: CROWD-VERIFIED';
+  ev.className = 'info-val amber';
+  bus.bindPopup('<b>Presence verified</b><br>AI-Connect logged at ' + new Date().toLocaleTimeString()).openPopup();
+}
+</script>
 </body>
 </html>
