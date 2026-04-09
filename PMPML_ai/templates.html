@@ -4,35 +4,89 @@
     <title>PMPML AI-Connect</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; font-family: sans-serif; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #map { height: 100vh; width: 100%; }
-        .controls { position: absolute; top: 10px; left: 50px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .dashboard { 
+            position: absolute; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            z-index: 1000; 
+            background: rgba(255, 255, 255, 0.9); 
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .bus-status { color: #2ecc71; font-weight: bold; font-size: 1.2em; }
+        .verify-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-top: 10px;
+            cursor: pointer;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <h3>PMPML AI-Connect</h3>
-        <p>Location: Handewadi / Uruli Devachi</p>
+
+    <div class="dashboard">
+        <div id="bus-info">Searching for nearby buses...</div>
+        <div id="status" class="bus-status"></div>
+        <button class="verify-btn" onclick="verifyBus()">I am on this Bus (Verify)</button>
     </div>
+
     <div id="map"></div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         var map = L.map('map').setView([18.4526, 73.9455], 16);
         
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        L.marker([18.4526, 73.9455]).addTo(map)
-            .bindPopup('Keystone School of Engineering')
-            .openPopup();
-            
-        L.circle([18.4526, 73.9455], {
-            color: 'blue',
-            fillColor: '#30f',
-            fillOpacity: 0.1,
-            radius: 500
-        }).addTo(map);
+        var collegeMarker = L.marker([18.4526, 73.9455]).addTo(map).bindPopup('Keystone College');
+
+        var busRoute = [
+            [18.4580, 73.9380],
+            [18.4570, 73.9400],
+            [18.4560, 73.9420],
+            [18.4550, 73.9440],
+            [18.4535, 73.9450],
+            [18.4526, 73.9455]
+        ];
+
+        var busIcon = L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
+            iconSize: [40, 40]
+        });
+
+        var busMarker = L.marker(busRoute[0], {icon: busIcon}).addTo(map);
+        var step = 0;
+
+        function moveBus() {
+            if (step < busRoute.length) {
+                busMarker.setLatLng(busRoute[step]);
+                document.getElementById('bus-info').innerHTML = "Bus 149: Heading to Keystone";
+                document.getElementById('status').innerHTML = "ETA: " + (busRoute.length - step) + " mins";
+                step++;
+            } else {
+                document.getElementById('status').innerHTML = "Arrived at College";
+                step = 0; 
+            }
+        }
+
+        setInterval(moveBus, 3000);
+
+        function verifyBus() {
+            busMarker.bindPopup("<b>Verified by User</b>").openPopup();
+            document.getElementById('status').innerHTML = "STATUS: VERIFIED LIVE";
+            document.getElementById('status').style.color = "#e67e22";
+        }
     </script>
 </body>
 </html>
