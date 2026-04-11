@@ -1,287 +1,826 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PMPML AI-Connect</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMPML AI-Connect | Pune Smart Transit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;background:#0d1b2a}
-#map{position:absolute;inset:0;z-index:1}
-.leaflet-routing-container{display:none!important}
-.topbar{
-  position:absolute;top:0;left:0;right:0;z-index:900;
-  background:linear-gradient(to bottom,rgba(13,27,42,0.93) 0%,transparent 100%);
-  padding:16px 20px 40px;
-  display:flex;align-items:center;gap:10px;
+:root {
+  --bg: #050a15;
+  --glass: rgba(8, 16, 32, 0.82);
+  --border: rgba(0, 210, 255, 0.13);
+  --cyan: #00d4ff;
+  --cyan-dim: rgba(0, 212, 255, 0.25);
+  --green: #00ff88;
+  --amber: #ffaa00;
+  --red: #ff4455;
+  --purple: #a855f7;
+  --txt: #ddeeff;
+  --txt2: rgba(160, 200, 240, 0.55);
+  --ui: 'Exo 2', sans-serif;
+  --mono: 'Share Tech Mono', monospace;
+  --hh: 56px;
+  --lw: 268px;
+  --rw: 336px;
 }
-.topbar-pulse{
-  width:9px;height:9px;border-radius:50%;
-  background:#22c55e;
-  box-shadow:0 0 0 3px rgba(34,197,94,0.22);
-  flex-shrink:0;
-  animation:pulseGreen 2s infinite;
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--txt); font-family: var(--ui); }
+
+#header {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--hh);
+  background: var(--glass); border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  display: flex; align-items: center; padding: 0 18px; z-index: 1000; gap: 14px;
 }
-@keyframes pulseGreen{
-  0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,0.22)}
-  50%{box-shadow:0 0 0 6px rgba(34,197,94,0.08)}
+.logo-wrap { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 36px; height: 36px; background: linear-gradient(135deg, #0066ff, var(--cyan));
+  border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px;
 }
-.topbar-title{font-size:14px;font-weight:700;color:#f1f5f9;letter-spacing:0.4px}
-.topbar-live{
-  margin-left:auto;font-size:11px;font-weight:600;
-  color:#22c55e;background:rgba(34,197,94,0.12);
-  border:1px solid rgba(34,197,94,0.25);
-  padding:3px 10px;border-radius:20px;letter-spacing:0.8px;
+.logo-main { font-size: 17px; font-weight: 800; color: var(--cyan); letter-spacing: 0.5px; line-height: 1.1; }
+.logo-sub { font-size: 9px; color: var(--txt2); font-family: var(--mono); letter-spacing: 2.5px; }
+.h-flex { flex: 1; }
+.h-stat { font-family: var(--mono); font-size: 11px; color: var(--txt2); padding: 0 12px; border-left: 1px solid var(--border); }
+.h-stat b { color: var(--cyan); }
+.pill {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.25);
+  border-radius: 20px; padding: 5px 13px; font-family: var(--mono); font-size: 10px; color: var(--green);
 }
-.sheet{
-  position:absolute;bottom:0;left:0;right:0;z-index:900;
-  background:#111c28;
-  border-radius:22px 22px 0 0;
-  border-top:1px solid rgba(255,255,255,0.06);
-  padding:0 18px 28px;
+.dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+#app { position: fixed; top: var(--hh); left: 0; right: 0; bottom: 0; display: flex; }
+
+#left-panel {
+  width: var(--lw); height: 100%; flex-shrink: 0;
+  background: var(--glass); border-right: 1px solid var(--border);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  display: flex; flex-direction: column; overflow: hidden; z-index: 400;
 }
-.sheet-drag{
-  width:34px;height:4px;
-  background:rgba(255,255,255,0.12);
-  border-radius:2px;
-  margin:10px auto 18px;
+.ph { padding: 13px 14px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.ph-label { font-size: 9px; font-family: var(--mono); color: var(--txt2); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 2px; }
+.ph-val { font-size: 19px; font-weight: 800; }
+.ph-val span { color: var(--cyan); }
+#fleet-list {
+  flex: 1; overflow-y: auto; padding: 9px;
+  display: flex; flex-direction: column; gap: 7px;
 }
-.route-chip{
-  display:inline-flex;align-items:center;gap:6px;
-  background:rgba(59,130,246,0.12);
-  border:1px solid rgba(59,130,246,0.28);
-  border-radius:20px;padding:3px 12px;margin-bottom:10px;
+#fleet-list::-webkit-scrollbar { width: 2px; }
+#fleet-list::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
+
+.fc {
+  background: rgba(0,212,255,0.03); border: 1px solid var(--border);
+  border-radius: 10px; padding: 11px 11px 10px; cursor: pointer;
+  transition: all 0.18s; position: relative; overflow: hidden;
 }
-.route-chip-dot{width:6px;height:6px;border-radius:50%;background:#60a5fa}
-.route-chip-label{font-size:11px;font-weight:700;color:#93c5fd;letter-spacing:0.7px}
-.route-heading{font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:3px}
-.route-sub{font-size:12px;color:#475569;margin-bottom:16px;line-height:1.5}
-.info-row{
-  display:flex;align-items:center;gap:10px;
-  background:rgba(255,255,255,0.03);
-  border:1px solid rgba(255,255,255,0.06);
-  border-radius:14px;padding:13px 14px;margin-bottom:12px;
+.fc::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--card-c, var(--cyan)); border-radius: 3px 0 0 3px;
 }
-.info-icon{
-  width:36px;height:36px;border-radius:10px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
+.fc:hover { background: rgba(0,212,255,0.07); transform: translateX(2px); }
+.fc.active { background: rgba(0,212,255,0.09); border-color: var(--cyan-dim); }
+.fc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.fc-route { font-size: 21px; font-weight: 800; font-family: var(--mono); line-height: 1; }
+.db {
+  font-size: 9px; font-family: var(--mono); font-weight: 700;
+  letter-spacing: 1px; padding: 3px 8px; border-radius: 10px; text-transform: uppercase;
 }
-.info-icon.green{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.18)}
-.info-icon.blue{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.18)}
-.info-icon svg{width:16px;height:16px}
-.info-lbl{font-size:10px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;margin-bottom:2px}
-.info-val{font-size:14px;font-weight:700;color:#e2e8f0;transition:color 0.4s}
-.info-val.amber{color:#f59e0b}
-.info-val.green{color:#22c55e}
-.sep{width:1px;height:30px;background:rgba(255,255,255,0.06);margin:0 4px}
-.prog-wrap{
-  background:rgba(255,255,255,0.03);
-  border:1px solid rgba(255,255,255,0.06);
-  border-radius:14px;padding:13px 14px;margin-bottom:14px;
+.db-Low { background: rgba(0,255,136,0.12); color: var(--green); border: 1px solid rgba(0,255,136,0.28); }
+.db-Medium { background: rgba(255,170,0,0.12); color: var(--amber); border: 1px solid rgba(255,170,0,0.28); }
+.db-High { background: rgba(255,68,85,0.12); color: var(--red); border: 1px solid rgba(255,68,85,0.28); }
+.fc-name { font-size: 10px; color: var(--txt2); margin-bottom: 5px; }
+.fc-loc {
+  font-size: 11px; color: var(--txt); font-family: var(--mono);
+  margin-bottom: 7px; display: flex; align-items: center; gap: 5px;
 }
-.prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
-.prog-top span{font-size:11px;color:#475569;font-weight:500}
-.prog-top strong{font-size:11px;color:#94a3b8;font-weight:600}
-.prog-track{height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden}
-.prog-fill{height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#22c55e);border-radius:3px;transition:width 0.25s ease}
-.vbtn{
-  width:100%;height:50px;border:none;border-radius:14px;
-  background:linear-gradient(135deg,#1d4ed8,#1e40af);
-  color:#fff;font-size:14px;font-weight:700;letter-spacing:0.3px;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
-  transition:transform 0.15s,opacity 0.2s;
-  position:relative;overflow:hidden;
+.fc-loc::before { content: '◉'; font-size: 7px; color: var(--cyan); }
+.pbar { height: 3px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; margin-bottom: 5px; }
+.pfill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--green)); border-radius: 3px; transition: width 0.8s linear; }
+.fc-stats { display: flex; gap: 10px; }
+.fc-stat { font-size: 10px; font-family: var(--mono); color: var(--txt2); }
+.fc-stat b { color: var(--txt); }
+.ta { margin-top: 5px; font-size: 9px; font-family: var(--mono); color: var(--amber); display: none; align-items: center; gap: 4px; }
+
+#map-container { flex: 1; position: relative; }
+#map { width: 100%; height: 100%; }
+
+#right-panel {
+  width: var(--rw); height: 100%; flex-shrink: 0;
+  background: var(--glass); border-left: 1px solid var(--border);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  display: flex; flex-direction: column; z-index: 400; overflow: hidden;
 }
-.vbtn:hover{opacity:0.92}
-.vbtn:active{transform:scale(0.98)}
-.vbtn.done{background:linear-gradient(135deg,#059669,#047857);cursor:default}
-.vbtn svg{width:15px;height:15px;flex-shrink:0}
-.ripple{
-  position:absolute;inset:0;border-radius:14px;
-  background:rgba(255,255,255,0.08);
-  transform:scale(0);opacity:0;
+
+.sec { padding: 13px 15px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sec-lbl { font-size: 9px; font-family: var(--mono); letter-spacing: 3px; color: var(--txt2); text-transform: uppercase; margin-bottom: 8px; }
+.sr { display: flex; gap: 7px; }
+.si {
+  flex: 1; background: rgba(0,212,255,0.05); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 12px; color: var(--txt);
+  font-family: var(--mono); font-size: 13px; outline: none; transition: border-color 0.2s;
 }
-.vbtn.done .ripple{animation:ripOut 0.55s ease-out forwards}
-@keyframes ripOut{0%{transform:scale(0);opacity:0.5}100%{transform:scale(1.3);opacity:0}}
+.si:focus { border-color: rgba(0,212,255,0.45); box-shadow: 0 0 0 2px rgba(0,212,255,0.08); }
+.si::placeholder { color: var(--txt2); }
+.bp {
+  background: linear-gradient(135deg, #0055ff, var(--cyan)); border: none;
+  border-radius: 8px; padding: 9px 15px; color: #000; font-family: var(--mono);
+  font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.18s; letter-spacing: 1px;
+}
+.bp:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,212,255,0.35); }
+
+#stops-sec { padding: 10px 15px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: none; }
+.stops-lbl { font-size: 9px; font-family: var(--mono); letter-spacing: 2px; color: var(--txt2); text-transform: uppercase; margin-bottom: 7px; }
+#stops-list { display: flex; flex-direction: column; gap: 3px; max-height: 130px; overflow-y: auto; }
+#stops-list::-webkit-scrollbar { width: 2px; }
+#stops-list::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+.si-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 7px; border-radius: 6px; cursor: pointer; transition: background 0.15s; font-size: 11px;
+}
+.si-item:hover { background: rgba(0,212,255,0.07); }
+.si-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.si-name { color: var(--txt); }
+
+.ai-wrap { flex: 1; padding: 13px 15px; display: flex; flex-direction: column; overflow: hidden; }
+.ai-lbl { font-size: 9px; font-family: var(--mono); letter-spacing: 3px; color: var(--txt2); text-transform: uppercase; margin-bottom: 8px; }
+.qbtns { display: flex; gap: 5px; margin-bottom: 9px; flex-wrap: wrap; }
+.qb {
+  background: rgba(0,212,255,0.06); border: 1px solid var(--border);
+  border-radius: 14px; padding: 5px 11px; color: var(--cyan);
+  font-family: var(--mono); font-size: 9px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.5px;
+}
+.qb:hover { background: rgba(0,212,255,0.13); border-color: var(--cyan-dim); }
+.ai-row { display: flex; gap: 7px; margin-bottom: 11px; }
+.ai-ta {
+  flex: 1; background: rgba(0,212,255,0.05); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 12px; color: var(--txt); font-family: var(--ui);
+  font-size: 12px; outline: none; resize: none; height: 58px; transition: border-color 0.2s;
+}
+.ai-ta:focus { border-color: rgba(0,212,255,0.45); box-shadow: 0 0 0 2px rgba(0,212,255,0.08); }
+.ai-ta::placeholder { color: var(--txt2); }
+.bsend {
+  background: linear-gradient(135deg, #7c00ff, var(--cyan)); border: none;
+  border-radius: 8px; width: 58px; height: 58px; color: #fff; font-size: 17px;
+  cursor: pointer; transition: all 0.18s; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.bsend:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(124,0,255,0.4); }
+#ai-out { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; }
+#ai-out::-webkit-scrollbar { width: 2px; }
+#ai-out::-webkit-scrollbar-thumb { background: rgba(168,85,247,0.4); border-radius: 2px; }
+.ai-empty { text-align: center; padding: 18px; color: var(--txt2); font-family: var(--mono); font-size: 10px; line-height: 1.8; }
+
+.ab {
+  background: rgba(124,0,255,0.09); border: 1px solid rgba(124,0,255,0.28);
+  border-radius: 12px 12px 12px 2px; padding: 11px 13px;
+  font-size: 12px; line-height: 1.65; color: var(--txt); animation: fadein 0.3s ease;
+}
+@keyframes fadein { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.ab-hd { font-family: var(--mono); font-size: 9px; color: rgba(168,85,247,0.9); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+.thinking { display: flex; align-items: center; gap: 9px; padding: 11px; font-family: var(--mono); font-size: 11px; color: var(--txt2); }
+.tdots span { display: inline-block; width: 5px; height: 5px; background: var(--cyan); border-radius: 50%; margin: 0 2px; animation: bo 1.2s infinite; }
+.tdots span:nth-child(2){animation-delay:.2s} .tdots span:nth-child(3){animation-delay:.4s}
+@keyframes bo { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-7px)} }
+
+.rl { margin-top: 9px; display: flex; flex-direction: column; gap: 4px; }
+.ri {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(0,212,255,0.05); border-radius: 6px;
+  padding: 5px 9px; font-family: var(--mono); font-size: 10px;
+}
+.ri-num { font-weight: 700; color: var(--cyan); width: 28px; }
+.ri-loc { flex: 1; padding: 0 6px; color: var(--txt2); }
+.ri-score { color: var(--green); }
+
+#vstrip { padding: 10px 15px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.bv {
+  width: 100%; background: rgba(0,255,136,0.07); border: 1px solid rgba(0,255,136,0.28);
+  border-radius: 8px; padding: 10px; color: var(--green); font-family: var(--mono);
+  font-size: 10px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s; text-transform: uppercase;
+}
+.bv:hover { background: rgba(0,255,136,0.14); box-shadow: 0 0 14px rgba(0,255,136,0.18); }
+
+.bm {
+  width: 40px; height: 40px; border: 2px solid; border-radius: 50%;
+  background: rgba(5,10,21,0.92); backdrop-filter: blur(10px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; font-family: var(--mono); font-weight: 700; font-size: 11px; color: #fff;
+  position: relative; transition: transform 0.2s;
+}
+.bm:hover { transform: scale(1.15); }
+.pr {
+  position: absolute; inset: -4px; border-radius: 50%; border: 1px solid;
+  animation: rpulse 2.2s infinite; opacity: 0.35;
+}
+@keyframes rpulse { 0%{transform:scale(0.9);opacity:0.35} 100%{transform:scale(1.5);opacity:0} }
+
+.leaflet-popup-content-wrapper {
+  background: rgba(4,8,18,0.96) !important; border: 1px solid var(--border) !important;
+  border-radius: 13px !important; box-shadow: 0 10px 40px rgba(0,0,0,0.6) !important;
+  backdrop-filter: blur(20px) !important; color: var(--txt) !important;
+}
+.leaflet-popup-tip { background: rgba(4,8,18,0.96) !important; }
+.leaflet-popup-close-button { color: var(--txt2) !important; font-size: 16px !important; top: 8px !important; right: 10px !important; }
+
+.stop-tt {
+  background: rgba(4,8,18,0.92) !important; border: 1px solid var(--border) !important;
+  border-radius: 6px !important; color: var(--txt) !important; font-family: var(--mono) !important;
+  font-size: 10px !important; padding: 4px 9px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+#toasts {
+  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+  z-index: 3000; display: flex; flex-direction: column; gap: 7px; align-items: center; pointer-events: none;
+}
+.toast {
+  background: var(--glass); border: 1px solid var(--border); backdrop-filter: blur(20px);
+  border-radius: 9px; padding: 9px 16px; font-family: var(--mono); font-size: 11px; color: var(--txt);
+  white-space: nowrap; animation: tin 0.28s ease, tout 0.28s ease 2.7s forwards;
+}
+.toast.ok { border-color: rgba(0,255,136,0.38); color: var(--green); }
+.toast.warn { border-color: rgba(255,170,0,0.38); color: var(--amber); }
+@keyframes tin { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+@keyframes tout { from{opacity:1} to{opacity:0} }
+
+.leaflet-container { background: #060d1c; }
+
+.map-badge {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  background: var(--glass); border: 1px solid var(--border); backdrop-filter: blur(20px);
+  border-radius: 20px; padding: 6px 14px; font-family: var(--mono); font-size: 10px;
+  color: var(--txt2); z-index: 600; white-space: nowrap; pointer-events: none;
+}
+.map-badge b { color: var(--cyan); }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="topbar-pulse"></div>
-  <div class="topbar-title">PMPML AI-Connect</div>
-  <div class="topbar-live">LIVE</div>
-</div>
-
-<div id="map"></div>
-
-<div class="sheet">
-  <div class="sheet-drag"></div>
-  <div class="route-chip">
-    <div class="route-chip-dot"></div>
-    <span class="route-chip-label">ROUTE 149</span>
-  </div>
-  <div class="route-heading">Hadapsar Gadital</div>
-  <div class="route-sub">Handewadi Chowk &rarr; Keystone School of Engineering</div>
-
-  <div class="info-row">
-    <div class="info-icon green">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-      </svg>
-    </div>
-    <div style="flex:1">
-      <div class="info-lbl">Bus Status</div>
-      <div class="info-val" id="etaVal">Calculating route…</div>
-    </div>
-    <div class="sep"></div>
-    <div class="info-icon blue" style="margin-left:4px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-      </svg>
-    </div>
+<header id="header">
+  <div class="logo-wrap">
+    <div class="logo-icon">🚌</div>
     <div>
-      <div class="info-lbl">Stops left</div>
-      <div class="info-val" id="stopsVal">—</div>
+      <div class="logo-main">PMPML AI-Connect</div>
+      <div class="logo-sub">PUNE SMART TRANSIT ECOSYSTEM</div>
     </div>
   </div>
+  <div class="h-flex"></div>
+  <div class="h-stat">Active Routes <b>5</b></div>
+  <div class="h-stat">Buses Live <b id="live-count">5</b></div>
+  <div class="h-stat">Traffic Zones <b>4</b></div>
+  <div class="pill"><div class="dot"></div>LIVE SIMULATION</div>
+</header>
 
-  <div class="prog-wrap">
-    <div class="prog-top">
-      <span>Journey progress</span>
-      <strong id="pctVal">0%</strong>
+<div id="app">
+  <aside id="left-panel">
+    <div class="ph">
+      <div class="ph-label">Live Fleet</div>
+      <div class="ph-val"><span>5</span> Active Buses</div>
     </div>
-    <div class="prog-track">
-      <div class="prog-fill" id="progFill"></div>
-    </div>
+    <div id="fleet-list"></div>
+  </aside>
+
+  <div id="map-container">
+    <div id="map"></div>
+    <div class="map-badge">🎓 <b>Keystone School of Engineering</b> — Handewadi, Pune</div>
   </div>
 
-  <button class="vbtn" id="vbtn" onclick="handleVerify()">
-    <div class="ripple"></div>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>
-    </svg>
-    Verify My Presence
-  </button>
+  <aside id="right-panel">
+    <div class="sec">
+      <div class="sec-lbl">Route Search & Stop View</div>
+      <div class="sr">
+        <input type="text" id="search-in" class="si" placeholder="Enter route no. (149, 174…)" maxlength="3">
+        <button class="bp" id="search-btn">FIND</button>
+      </div>
+    </div>
+
+    <div id="stops-sec">
+      <div class="stops-lbl">Route Stops — Click to query AI</div>
+      <div id="stops-list"></div>
+    </div>
+
+    <div class="ai-wrap">
+      <div class="ai-lbl">AI Fast-Track · Llama3</div>
+      <div class="qbtns">
+        <button class="qb" id="qb1">⚡ Best Route</button>
+        <button class="qb" id="qb2">👥 Low Crowd</button>
+        <button class="qb" id="qb3">🚦 Traffic</button>
+        <button class="qb" id="qb4">🎓 To Keystone</button>
+      </div>
+      <div class="ai-row">
+        <textarea class="ai-ta" id="ai-in" placeholder="Ask about crowd, wait time, best route, traffic…"></textarea>
+        <button class="bsend" id="send-btn">▶</button>
+      </div>
+      <div id="ai-out">
+        <div class="ai-empty">◈ LLAMA3 READY<br>Ask me anything about the fleet</div>
+      </div>
+    </div>
+
+    <div id="vstrip">
+      <button class="bv" id="verify-btn">📍 Verify My Presence on Bus</button>
+    </div>
+  </aside>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+<div id="toasts"></div>
+
 <script>
-var S = [18.4595, 73.9355];
-var E = [18.4526, 73.9455];
-var allCoords = [];
-var idx = 0;
-var timer = null;
-var verDone = false;
+const API = 'http://localhost:5000';
 
-var map = L.map('map', { zoomControl: false }).setView([18.456, 73.941], 15);
+const ROUTE_DATA = {
+  149: {
+    name: "Swargate – Saswad Rd",
+    color: "#00d4ff",
+    waypoints: [
+      [18.4975, 73.8630],[18.4918, 73.8701],[18.4875, 73.8790],
+      [18.4890, 73.8912],[18.4948, 73.9052],[18.5018, 73.9276],
+      [18.5002, 73.9330],[18.4870, 73.9318],[18.4720, 73.9270],
+      [18.4615, 73.9203],[18.4550, 73.9250]
+    ],
+    stops: [
+      { name: "Swargate Bus Stand", coords: [18.4975, 73.8630] },
+      { name: "Market Yard", coords: [18.4918, 73.8701] },
+      { name: "NIBM Junction", coords: [18.4890, 73.8912] },
+      { name: "Wanowrie", coords: [18.4948, 73.9052] },
+      { name: "Hadapsar", coords: [18.5018, 73.9276] },
+      { name: "Hadapsar Gadital", coords: [18.5002, 73.9330] },
+      { name: "Handewadi Chowk", coords: [18.4615, 73.9203] },
+      { name: "Saswad Road", coords: [18.4550, 73.9250] }
+    ]
+  },
+  174: {
+    name: "Shivajinagar – Kondhwa",
+    color: "#ff6b35",
+    waypoints: [
+      [18.5308, 73.8474],[18.5210, 73.8479],[18.5159, 73.8463],
+      [18.5079, 73.8479],[18.4975, 73.8630],[18.4870, 73.8702],
+      [18.4722, 73.8752],[18.4626, 73.8880]
+    ],
+    stops: [
+      { name: "Shivajinagar", coords: [18.5308, 73.8474] },
+      { name: "FC Road", coords: [18.5210, 73.8479] },
+      { name: "Deccan Gymkhana", coords: [18.5159, 73.8463] },
+      { name: "Swargate", coords: [18.4975, 73.8630] },
+      { name: "Bibwewadi", coords: [18.4870, 73.8702] },
+      { name: "Kondhwa", coords: [18.4626, 73.8880] }
+    ]
+  },
+  197: {
+    name: "Kharadi – Bibwewadi",
+    color: "#00ff88",
+    waypoints: [
+      [18.5531, 73.9407],[18.5382, 73.9350],[18.5200, 73.9300],
+      [18.5100, 73.9280],[18.5018, 73.9276],[18.4948, 73.9100],
+      [18.4870, 73.8950],[18.4741, 73.8550]
+    ],
+    stops: [
+      { name: "Kharadi IT Park", coords: [18.5531, 73.9407] },
+      { name: "EON IT Park", coords: [18.5382, 73.9350] },
+      { name: "Magarpatta City", coords: [18.5100, 73.9280] },
+      { name: "Hadapsar", coords: [18.5018, 73.9276] },
+      { name: "Wanowrie", coords: [18.4948, 73.9100] },
+      { name: "Bibwewadi", coords: [18.4741, 73.8550] }
+    ]
+  },
+  201: {
+    name: "Warje – Hadapsar",
+    color: "#ff4455",
+    waypoints: [
+      [18.4833, 73.8201],[18.4900, 73.8301],[18.4951, 73.8400],
+      [18.4975, 73.8630],[18.4918, 73.8701],[18.4948, 73.9052],
+      [18.5018, 73.9276]
+    ],
+    stops: [
+      { name: "Warje Depot", coords: [18.4833, 73.8201] },
+      { name: "Karve Nagar", coords: [18.4900, 73.8301] },
+      { name: "Dandekar Bridge", coords: [18.4951, 73.8400] },
+      { name: "Swargate", coords: [18.4975, 73.8630] },
+      { name: "Market Yard", coords: [18.4918, 73.8701] },
+      { name: "Hadapsar", coords: [18.5018, 73.9276] }
+    ]
+  },
+  204: {
+    name: "Kothrud – Viman Nagar",
+    color: "#c084fc",
+    waypoints: [
+      [18.5074, 73.8077],[18.5159, 73.8250],[18.5159, 73.8463],
+      [18.5308, 73.8474],[18.5362, 73.8700],[18.5362, 73.8939],
+      [18.5500, 73.9100],[18.5679, 73.9143]
+    ],
+    stops: [
+      { name: "Kothrud Depot", coords: [18.5074, 73.8077] },
+      { name: "Deccan Gymkhana", coords: [18.5159, 73.8463] },
+      { name: "Shivajinagar", coords: [18.5308, 73.8474] },
+      { name: "Bund Garden", coords: [18.5362, 73.8700] },
+      { name: "Koregaon Park", coords: [18.5362, 73.8939] },
+      { name: "Viman Nagar", coords: [18.5679, 73.9143] }
+    ]
+  }
+};
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
-}).addTo(map);
+const TRAFFIC_ZONES = [
+  { name: "Hadapsar Junction", lat: 18.502, lng: 73.927, radius: 0.009, delay: 800 },
+  { name: "Swargate", lat: 18.497, lng: 73.863, radius: 0.007, delay: 1000 },
+  { name: "Market Yard", lat: 18.492, lng: 73.870, radius: 0.006, delay: 600 },
+  { name: "Deccan-FC Road", lat: 18.518, lng: 73.847, radius: 0.006, delay: 700 }
+];
 
-L.control.zoom({ position: 'topright' }).addTo(map);
+const fleet = [
+  { id: "BUS-149A", route: 149, segIdx: 2, t: 0.3, density: "Low",    pausing: false, pauseRemaining: 0, trafficDelay: 0, pausedAtIdx: -1 },
+  { id: "BUS-174B", route: 174, segIdx: 1, t: 0.6, density: "Medium", pausing: false, pauseRemaining: 0, trafficDelay: 0, pausedAtIdx: -1 },
+  { id: "BUS-197C", route: 197, segIdx: 3, t: 0.1, density: "High",   pausing: false, pauseRemaining: 0, trafficDelay: 0, pausedAtIdx: -1 },
+  { id: "BUS-201D", route: 201, segIdx: 1, t: 0.8, density: "Low",    pausing: false, pauseRemaining: 0, trafficDelay: 0, pausedAtIdx: -1 },
+  { id: "BUS-204E", route: 204, segIdx: 4, t: 0.4, density: "Medium", pausing: false, pauseRemaining: 0, trafficDelay: 0, pausedAtIdx: -1 }
+];
 
-function makeBusCanvas() {
-  var c = document.createElement('canvas');
-  c.width = 56; c.height = 56;
-  var x = c.getContext('2d');
-  x.beginPath();
-  x.arc(28, 28, 26, 0, Math.PI * 2);
-  x.fillStyle = '#1e40af';
-  x.fill();
-  x.strokeStyle = '#93c5fd';
-  x.lineWidth = 2.5;
-  x.stroke();
-  x.font = '22px serif';
-  x.textAlign = 'center';
-  x.textBaseline = 'middle';
-  x.fillText('🚌', 28, 30);
-  return c.toDataURL();
+const TICK = 100;
+const BASE_SPD = 0.006;
+const TRF_MUL = 0.22;
+const STOP_MS = 6000;
+const STOP_RAD = 0.0022;
+
+let map, busMarkers = {}, searchPoly = null, stopMarkers = [], selectedRoute = null;
+
+function dist(a, b) {
+  const dl = a[0]-b[0], dn = a[1]-b[1];
+  return Math.sqrt(dl*dl + dn*dn);
 }
 
-var busIcon = L.icon({
-  iconUrl: makeBusCanvas(),
-  iconSize: [40, 40],
-  iconAnchor: [20, 20]
-});
-
-L.circleMarker(S, {
-  radius: 8, fillColor: '#22c55e', fillOpacity: 1,
-  color: '#fff', weight: 2.5
-}).addTo(map).bindTooltip('Handewadi Chowk', { direction: 'top', permanent: false });
-
-L.circleMarker(E, {
-  radius: 8, fillColor: '#ef4444', fillOpacity: 1,
-  color: '#fff', weight: 2.5
-}).addTo(map).bindTooltip('Keystone School of Engineering', { direction: 'top', permanent: false });
-
-var bus = L.marker(S, { icon: busIcon, zIndexOffset: 1000 }).addTo(map);
-
-var ctrl = L.Routing.control({
-  waypoints: [L.latLng(S[0], S[1]), L.latLng(E[0], E[1])],
-  router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' }),
-  routeWhileDragging: false,
-  addWaypoints: false,
-  createMarker: function() { return null; },
-  lineOptions: {
-    styles: [{ color: '#3b82f6', weight: 5, opacity: 0.9 }]
-  }
-}).addTo(map);
-
-ctrl.on('routesfound', function(e) {
-  allCoords = e.routes[0].coordinates;
-  idx = 0;
-  var total = allCoords.length;
-  var mins = Math.max(1, Math.ceil(total / 60));
-  document.getElementById('etaVal').textContent = 'En route — ~' + mins + ' min away';
-  document.getElementById('stopsVal').textContent = '3';
-  tick();
-});
-
-ctrl.on('routingerror', function() {
-  document.getElementById('etaVal').textContent = 'Route unavailable offline';
-});
-
-function tick() {
-  var total = allCoords.length;
-  if (idx >= total) {
-    document.getElementById('etaVal').textContent = 'Arrived at destination';
-    document.getElementById('etaVal').className = 'info-val green';
-    document.getElementById('pctVal').textContent = '100%';
-    document.getElementById('progFill').style.width = '100%';
-    document.getElementById('stopsVal').textContent = '0';
-    return;
-  }
-  var pt = allCoords[idx];
-  bus.setLatLng([pt.lat, pt.lng]);
-  var pct = Math.round((idx / (total - 1)) * 100);
-  document.getElementById('progFill').style.width = pct + '%';
-  document.getElementById('pctVal').textContent = pct + '%';
-  var rem = Math.max(1, Math.ceil((total - idx) / 60));
-  if (!verDone) {
-    document.getElementById('etaVal').textContent = 'En route — ~' + rem + ' min away';
-  }
-  var s = idx < total * 0.33 ? '3' : idx < total * 0.66 ? '2' : idx < total * 0.9 ? '1' : '0';
-  document.getElementById('stopsVal').textContent = s;
-  idx++;
-  timer = setTimeout(tick, 75);
+function getBusPos(bus) {
+  const wp = ROUTE_DATA[bus.route].waypoints;
+  const a = wp[bus.segIdx], b = wp[Math.min(bus.segIdx+1, wp.length-1)];
+  return [a[0]+(b[0]-a[0])*bus.t, a[1]+(b[1]-a[1])*bus.t];
 }
 
-function handleVerify() {
-  if (verDone) return;
-  verDone = true;
-  var b = document.getElementById('vbtn');
-  b.classList.add('done');
-  b.innerHTML = '<div class="ripple"></div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Presence Confirmed';
-  var ev = document.getElementById('etaVal');
-  ev.textContent = 'AI STATUS: CROWD-VERIFIED';
-  ev.className = 'info-val amber';
-  bus.bindPopup('<b>Presence verified</b><br>AI-Connect logged at ' + new Date().toLocaleTimeString()).openPopup();
+function getProgress(bus) {
+  const total = ROUTE_DATA[bus.route].waypoints.length - 1;
+  return Math.min(100, Math.round(((bus.segIdx + bus.t) / total) * 100));
 }
+
+function getNearStop(bus) {
+  const pos = getBusPos(bus);
+  const stops = ROUTE_DATA[bus.route].stops;
+  let near = stops[0], min = Infinity;
+  for (const s of stops) {
+    const d = dist(pos, s.coords);
+    if (d < min) { min = d; near = s; }
+  }
+  return near.name;
+}
+
+function getTraffic(bus) {
+  const pos = getBusPos(bus);
+  for (const z of TRAFFIC_ZONES) {
+    if (dist(pos, [z.lat, z.lng]) < z.radius) return z;
+  }
+  return null;
+}
+
+function getSpeed(bus) {
+  if (bus.pausing) return '0 km/h';
+  return bus.trafficDelay > 0 ? '~9 km/h' : '~34 km/h';
+}
+
+function createBusIcon(bus) {
+  const c = { Low: '#00ff88', Medium: '#ffaa00', High: '#ff4455' }[bus.density];
+  return L.divIcon({
+    className: '',
+    html: `<div class="bm" style="border-color:${c}">
+      <div class="pr" style="border-color:${c}"></div>
+      <div style="font-size:10px;font-weight:800;font-family:'Share Tech Mono';color:#fff">${bus.route}</div>
+      <div style="width:5px;height:5px;border-radius:50%;background:${c};margin-top:1px"></div>
+    </div>`,
+    iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -22]
+  });
+}
+
+function popupHTML(bus) {
+  const dc = { Low: '#00ff88', Medium: '#ffaa00', High: '#ff4455' }[bus.density];
+  const prog = getProgress(bus);
+  const loc = getNearStop(bus);
+  const tr = getTraffic(bus);
+  const spd = getSpeed(bus);
+  return `<div style="font-family:'Share Tech Mono',monospace;min-width:210px;padding:2px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+      <div style="font-size:26px;font-weight:800;color:#00d4ff">Route ${bus.route}</div>
+      <div style="padding:3px 9px;border-radius:10px;background:${dc}18;color:${dc};border:1px solid ${dc}50;font-size:10px;font-weight:700">${bus.density}</div>
+    </div>
+    <div style="font-size:9px;color:rgba(160,200,240,0.5);letter-spacing:2px;text-transform:uppercase">LOCATION</div>
+    <div style="font-size:13px;color:#ddeeff;margin-bottom:10px">${loc}</div>
+    <div style="display:flex;gap:16px;margin-bottom:10px">
+      <div>
+        <div style="font-size:9px;color:rgba(160,200,240,0.5);letter-spacing:1px;text-transform:uppercase">PROGRESS</div>
+        <div style="font-size:13px">${prog}%</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:rgba(160,200,240,0.5);letter-spacing:1px;text-transform:uppercase">SPEED</div>
+        <div style="font-size:13px">${spd}</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:rgba(160,200,240,0.5);letter-spacing:1px;text-transform:uppercase">BUS ID</div>
+        <div style="font-size:11px;color:#a8a8a8">${bus.id}</div>
+      </div>
+    </div>
+    <div style="height:3px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden">
+      <div style="height:100%;width:${prog}%;background:linear-gradient(90deg,#00d4ff,#00ff88)"></div>
+    </div>
+    ${tr ? `<div style="margin-top:8px;font-size:10px;color:#ffaa00">⚠ Traffic delay: ${tr.name}</div>` : ''}
+    ${bus.pausing ? `<div style="margin-top:6px;font-size:10px;color:#00d4ff">🚏 At stop — boarding passengers</div>` : ''}
+  </div>`;
+}
+
+function simTick() {
+  for (const bus of fleet) {
+    if (bus.pausing) {
+      bus.pauseRemaining -= TICK;
+      if (bus.pauseRemaining <= 0) { bus.pausing = false; bus.pauseRemaining = 0; }
+      continue;
+    }
+    const tz = getTraffic(bus);
+    bus.trafficDelay = tz ? tz.delay : 0;
+    const spd = tz ? BASE_SPD * TRF_MUL : BASE_SPD;
+    bus.t += spd;
+    if (bus.t >= 1.0) {
+      bus.t = 0;
+      bus.segIdx++;
+      const wp = ROUTE_DATA[bus.route].waypoints;
+      if (bus.segIdx >= wp.length - 1) bus.segIdx = 0;
+      const arrPt = wp[bus.segIdx];
+      const nearSt = ROUTE_DATA[bus.route].stops.find(s => dist(arrPt, s.coords) < STOP_RAD);
+      if (nearSt && bus.pausedAtIdx !== bus.segIdx) {
+        bus.pausing = true;
+        bus.pauseRemaining = STOP_MS + Math.random() * 3000;
+        bus.pausedAtIdx = bus.segIdx;
+      }
+    }
+    const marker = busMarkers[bus.id];
+    if (marker) {
+      marker.setLatLng(getBusPos(bus));
+      marker.setIcon(createBusIcon(bus));
+    }
+  }
+  updateCards();
+}
+
+function updateCards() {
+  for (const bus of fleet) {
+    const card = document.getElementById('c-' + bus.id);
+    if (!card) continue;
+    const prog = getProgress(bus);
+    const loc = getNearStop(bus);
+    const tr = getTraffic(bus);
+    card.querySelector('.db').className = 'db db-' + bus.density;
+    card.querySelector('.db').textContent = bus.density;
+    card.querySelector('.fc-loc').textContent = loc;
+    card.querySelector('.pfill').style.width = prog + '%';
+    card.querySelector('.pv').textContent = prog + '%';
+    card.querySelector('.sv').textContent = getSpeed(bus);
+    const ta = card.querySelector('.ta');
+    if (tr) { ta.style.display = 'flex'; ta.textContent = '⚠ ' + tr.name; }
+    else { ta.style.display = 'none'; }
+  }
+}
+
+function renderCards() {
+  const el = document.getElementById('fleet-list');
+  el.innerHTML = fleet.map(bus => {
+    const rt = ROUTE_DATA[bus.route];
+    return `<div class="fc" id="c-${bus.id}" style="--card-c:${rt.color}" onclick="focusBus('${bus.id}')">
+      <div class="fc-top">
+        <div class="fc-route" style="color:${rt.color}">${bus.route}</div>
+        <div class="db db-${bus.density}">${bus.density}</div>
+      </div>
+      <div class="fc-name">${rt.name}</div>
+      <div class="fc-loc">${getNearStop(bus)}</div>
+      <div class="pbar"><div class="pfill" style="width:${getProgress(bus)}%"></div></div>
+      <div class="fc-stats">
+        <div class="fc-stat">PROG <b class="pv">${getProgress(bus)}%</b></div>
+        <div class="fc-stat">SPD <b class="sv">~34 km/h</b></div>
+      </div>
+      <div class="ta"></div>
+    </div>`;
+  }).join('');
+}
+
+function focusBus(id) {
+  const bus = fleet.find(b => b.id === id);
+  if (!bus) return;
+  map.setView(getBusPos(bus), 14, { animate: true });
+  const m = busMarkers[id];
+  if (m) m.openPopup();
+  document.querySelectorAll('.fc').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById('c-' + id);
+  if (card) card.classList.add('active');
+}
+
+function initMap() {
+  map = L.map('map', { center: [18.510, 73.890], zoom: 12, zoomControl: false });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CartoDB', subdomains: 'abcd', maxZoom: 19
+  }).addTo(map);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  for (const [key, rt] of Object.entries(ROUTE_DATA)) {
+    L.polyline(rt.waypoints, { color: rt.color, weight: 2, opacity: 0.18 }).addTo(map);
+  }
+
+  for (const z of TRAFFIC_ZONES) {
+    L.circle([z.lat, z.lng], {
+      radius: z.radius * 111000, color: '#ffaa00',
+      fillColor: '#ffaa00', fillOpacity: 0.07, weight: 1, dashArray: '5,4'
+    }).addTo(map).bindTooltip(`🚦 ${z.name}`, { className: 'stop-tt', direction: 'top' });
+  }
+
+  L.marker([18.4615, 73.9203], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="background:rgba(124,0,255,0.85);border:1.5px solid #c084fc;border-radius:7px;padding:4px 9px;font-family:'Share Tech Mono';font-size:10px;color:#fff;white-space:nowrap;box-shadow:0 0 14px rgba(124,0,255,0.5)">🎓 Keystone</div>`,
+      iconAnchor: [46, 16]
+    })
+  }).addTo(map).bindTooltip('Keystone School of Engineering', { className: 'stop-tt', permanent: false });
+
+  for (const bus of fleet) {
+    const m = L.marker(getBusPos(bus), { icon: createBusIcon(bus) }).addTo(map);
+    m.bindPopup(() => popupHTML(bus), { maxWidth: 300 });
+    m.on('click', () => {
+      m.setPopupContent(popupHTML(bus));
+    });
+    busMarkers[bus.id] = m;
+  }
+}
+
+function handleSearch() {
+  const val = document.getElementById('search-in').value.trim();
+  const key = parseInt(val);
+  if (!ROUTE_DATA[key]) { showToast('Route ' + val + ' not found', 'warn'); return; }
+  searchRoute(key);
+}
+
+function searchRoute(key) {
+  selectedRoute = key;
+  const rt = ROUTE_DATA[key];
+  if (searchPoly) map.removeLayer(searchPoly);
+  stopMarkers.forEach(m => map.removeLayer(m));
+  stopMarkers = [];
+
+  searchPoly = L.polyline(rt.waypoints, { color: rt.color, weight: 5, opacity: 0.85, dashArray: '9,5' }).addTo(map);
+
+  for (const s of rt.stops) {
+    const cm = L.circleMarker(s.coords, {
+      radius: 8, color: rt.color, fillColor: '#060d1c', fillOpacity: 1, weight: 2.5
+    }).addTo(map);
+    cm.bindTooltip(s.name, { className: 'stop-tt', direction: 'top', permanent: false });
+    cm.on('click', () => queryStop(key, s.name));
+    stopMarkers.push(cm);
+  }
+
+  map.fitBounds(searchPoly.getBounds(), { padding: [40, 40], animate: true });
+  renderStopsList(key);
+  showToast('Route ' + key + ': ' + rt.name, 'ok');
+}
+
+function renderStopsList(key) {
+  const rt = ROUTE_DATA[key];
+  document.getElementById('stops-list').innerHTML = rt.stops.map(s =>
+    `<div class="si-item" onclick="queryStop(${key}, '${s.name}')">
+      <div class="si-dot" style="background:${rt.color}"></div>
+      <span class="si-name">${s.name}</span>
+    </div>`
+  ).join('');
+  document.getElementById('stops-sec').style.display = 'block';
+}
+
+async function queryStop(key, stopName) {
+  const bus = fleet.find(b => b.route === key);
+  const busInfo = bus ? {
+    route: bus.route, progress: getProgress(bus), density: bus.density,
+    location: getNearStop(bus), trafficDelay: bus.trafficDelay, pausing: bus.pausing
+  } : {};
+  showThinking();
+  try {
+    const res = await fetch(API + '/ai/stop', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ route: key, stop: stopName, busInfo })
+    });
+    const data = await res.json();
+    showAIResp(data.response, 'Stop: ' + stopName, null);
+  } catch {
+    showAIResp('Backend offline. Run: python app.py', 'Error');
+  }
+}
+
+function handleAIQuery() {
+  const q = document.getElementById('ai-in').value.trim();
+  if (!q) return;
+  getAIRecommendation(q);
+  document.getElementById('ai-in').value = '';
+}
+
+async function getAIRecommendation(query) {
+  const fleetData = fleet.map(bus => ({
+    id: bus.id, route: bus.route, routeName: ROUTE_DATA[bus.route].name,
+    density: bus.density, progress: getProgress(bus), location: getNearStop(bus),
+    trafficDelay: bus.trafficDelay, pausing: bus.pausing,
+    speed: bus.pausing ? 0 : bus.trafficDelay > 0 ? 9 : 34
+  }));
+  showThinking();
+  try {
+    const res = await fetch(API + '/ai/recommend', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fleet: fleetData, query })
+    });
+    const data = await res.json();
+    showAIResp(data.response, 'Fast-Track AI', data.ranked);
+  } catch {
+    showAIResp('Start Flask backend: python app.py on port 5000', 'Connection Error');
+  }
+}
+
+function showThinking() {
+  document.getElementById('ai-out').innerHTML =
+    `<div class="thinking"><div class="tdots"><span></span><span></span><span></span></div>Llama3 processing…</div>`;
+}
+
+function showAIResp(text, label, ranked) {
+  let rl = '';
+  if (ranked && ranked.length) {
+    rl = `<div class="rl">${ranked.slice(0, 5).map((b, i) =>
+      `<div class="ri">
+        <span class="ri-num">#${i+1} ${b.route}</span>
+        <span class="ri-loc">${b.location || ''}</span>
+        <span class="ri-score">${b.score > 0 ? '+' : ''}${b.score}</span>
+      </div>`).join('')}</div>`;
+  }
+  document.getElementById('ai-out').innerHTML =
+    `<div class="ab">
+      <div class="ab-hd"><span>◈</span> ${label || 'AI RESPONSE'}</div>
+      <div>${text}</div>${rl}
+    </div>`;
+}
+
+async function verifyPresence() {
+  if (!navigator.geolocation) { showToast('Geolocation not supported', 'warn'); return; }
+  showToast('Getting your location…', '');
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    let nearest = null, minD = Infinity;
+    for (const bus of fleet) {
+      const bp = getBusPos(bus);
+      const d = dist([lat, lng], bp);
+      if (d < minD) { minD = d; nearest = bus; }
+    }
+    try {
+      const res = await fetch(API + '/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ route: nearest?.route, lat, lng })
+      });
+      const data = await res.json();
+      L.circleMarker([lat, lng], {
+        radius: 10, color: '#00ff88', fillColor: '#00ff88', fillOpacity: 0.25, weight: 2
+      }).addTo(map).bindPopup('📍 Your verified location').openPopup();
+      showToast('✓ Verified on Route ' + data.route + ' · Trust ' + Math.round(data.trustScore * 100) + '%', 'ok');
+    } catch {
+      showToast('Backend offline — cannot verify', 'warn');
+    }
+  }, () => showToast('Location access denied', 'warn'));
+}
+
+function showToast(msg, type) {
+  const el = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'ok' ? ' ok' : type === 'warn' ? ' warn' : '');
+  t.textContent = msg;
+  el.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
+
+function densityFlux() {
+  const opts = ['Low', 'Medium', 'High'];
+  for (const bus of fleet) {
+    const r = Math.random();
+    if (r < 0.15) bus.density = opts[Math.floor(Math.random() * 3)];
+  }
+}
+
+document.getElementById('search-btn').addEventListener('click', handleSearch);
+document.getElementById('search-in').addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
+document.getElementById('send-btn').addEventListener('click', handleAIQuery);
+document.getElementById('ai-in').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAIQuery(); } });
+document.getElementById('verify-btn').addEventListener('click', verifyPresence);
+document.getElementById('qb1').addEventListener('click', () => getAIRecommendation('Which bus is fastest to Keystone School right now?'));
+document.getElementById('qb2').addEventListener('click', () => getAIRecommendation('Which buses currently have low crowd density?'));
+document.getElementById('qb3').addEventListener('click', () => getAIRecommendation('Which buses are stuck in traffic congestion zones?'));
+document.getElementById('qb4').addEventListener('click', () => getAIRecommendation('I am at Handewadi Chowk, how do I get to Keystone fastest?'));
+
+initMap();
+renderCards();
+setInterval(simTick, TICK);
+setInterval(densityFlux, 18000);
 </script>
 </body>
 </html>
